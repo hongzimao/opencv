@@ -108,10 +108,14 @@
 #define CV_OPENCL_SVM_TRACE_ERROR_P(...)
 #endif
 
-#include "opencv2/core/opencl/runtime/opencl_clblas.hpp"
-#include "opencv2/core/opencl/runtime/opencl_clfft.hpp"
+#include "opencv2/core/opencl/runtime/opencl_clamdblas.hpp"
+#include "opencv2/core/opencl/runtime/opencl_clamdfft.hpp"
 
 #include "opencv2/core/opencl/runtime/opencl_core.hpp"
+
+#ifdef HAVE_DIRECTX
+#include "directx.hpp"
+#endif
 
 #ifdef HAVE_OPENCL_SVM
 #include "opencv2/core/opencl/runtime/opencl_svm_20.hpp"
@@ -1254,13 +1258,11 @@ public:
 
     ~AmdBlasHelper()
     {
-        // Do not tear down clBLAS.
-        // The user application may still use clBLAS even after OpenCV is unloaded.
-        /*try
+        try
         {
-            clblasTeardown();
+            clAmdBlasTeardown();
         }
-        catch (...) { }*/
+        catch (...) { }
     }
 
 protected:
@@ -1276,7 +1278,7 @@ protected:
                 {
                     try
                     {
-                        g_isAmdBlasAvailable = clblasSetup() == clblasSuccess;
+                        g_isAmdBlasAvailable = clAmdBlasSetup() == clAmdBlasSuccess;
                     }
                     catch (...)
                     {
@@ -1330,13 +1332,11 @@ public:
 
     ~AmdFftHelper()
     {
-        // Do not tear down clFFT.
-        // The user application may still use clFFT even after OpenCV is unloaded.
-        /*try
+        try
         {
-            clfftTeardown();
+//            clAmdFftTeardown();
         }
-        catch (...) { }*/
+        catch (...) { }
     }
 
 protected:
@@ -1353,10 +1353,10 @@ protected:
                     try
                     {
                         cl_uint major, minor, patch;
-                        CV_Assert(clfftInitSetupData(&setupData) == CLFFT_SUCCESS);
+                        CV_Assert(clAmdFftInitSetupData(&setupData) == CLFFT_SUCCESS);
 
                         // it throws exception in case AmdFft binaries are not found
-                        CV_Assert(clfftGetVersion(&major, &minor, &patch) == CLFFT_SUCCESS);
+                        CV_Assert(clAmdFftGetVersion(&major, &minor, &patch) == CLFFT_SUCCESS);
                         g_isAmdFftAvailable = true;
                     }
                     catch (const Exception &)
@@ -1373,12 +1373,12 @@ protected:
     }
 
 private:
-    static clfftSetupData setupData;
+    static clAmdFftSetupData setupData;
     static bool g_isAmdFftInitialized;
     static bool g_isAmdFftAvailable;
 };
 
-clfftSetupData AmdFftHelper::setupData;
+clAmdFftSetupData AmdFftHelper::setupData;
 bool AmdFftHelper::g_isAmdFftAvailable = false;
 bool AmdFftHelper::g_isAmdFftInitialized = false;
 
@@ -2367,6 +2367,9 @@ protected:
         , contextId(CV_XADD(&g_contextId, 1))
         , configuration(configuration_)
         , handle(0)
+#ifdef HAVE_DIRECTX
+        , p_directx_impl(0)
+#endif
 #ifdef HAVE_OPENCL_SVM
         , svmInitialized(false)
 #endif
@@ -2392,9 +2395,10 @@ protected:
                 handle = NULL;
             }
             devices.clear();
+#ifdef HAVE_DIRECTX
+            directx::internal::deleteDirectXImpl(&p_directx_impl);
+#endif
         }
-
-        userContextStorage.clear();
 
         {
             cv::AutoLock lock(cv::getInitializationMutex());
@@ -2701,20 +2705,18 @@ public:
         return *bufferPoolHostPtr_.get();
     }
 
-    std::map<std::type_index, std::shared_ptr<UserContext>> userContextStorage;
-    cv::Mutex userContextMutex;
-    void setUserContext(std::type_index typeId, const std::shared_ptr<UserContext>& userContext) {
-        cv::AutoLock lock(userContextMutex);
-        userContextStorage[typeId] = userContext;
+#ifdef HAVE_DIRECTX
+    directx::internal::OpenCLDirectXImpl* p_directx_impl;
+
+    directx::internal::OpenCLDirectXImpl* getDirectXImpl()
+    {
+        if (!p_directx_impl)
+        {
+            p_directx_impl = directx::internal::createDirectXImpl();
+        }
+        return p_directx_impl;
     }
-    std::shared_ptr<UserContext> getUserContext(std::type_index typeId) {
-        cv::AutoLock lock(userContextMutex);
-        auto it = userContextStorage.find(typeId);
-        if (it != userContextStorage.end())
-            return it->second;
-        else
-            return nullptr;
-    }
+#endif
 
 #ifdef HAVE_OPENCL_SVM
     bool svmInitialized;
@@ -3034,25 +3036,6 @@ Context Context::create(const std::string& configuration)
     return ctx;
 }
 
-void* Context::getOpenCLContextProperty(int propertyId) const
-{
-    if (p == NULL)
-        return nullptr;
-    ::size_t size = 0;
-    CV_OCL_CHECK(clGetContextInfo(p->handle, CL_CONTEXT_PROPERTIES, 0, NULL, &size));
-    std::vector<cl_context_properties> prop(size / sizeof(cl_context_properties), (cl_context_properties)0);
-    CV_OCL_CHECK(clGetContextInfo(p->handle, CL_CONTEXT_PROPERTIES, size, prop.data(), NULL));
-    for (size_t i = 0; i < prop.size(); i += 2)
-    {
-        if (prop[i] == (cl_context_properties)propertyId)
-        {
-            CV_LOG_DEBUG(NULL, "OpenCL: found context property=" << propertyId << ") => " << (void*)prop[i + 1]);
-            return (void*)prop[i + 1];
-        }
-    }
-    return nullptr;
-}
-
 #ifdef HAVE_OPENCL_SVM
 bool Context::useSVM() const
 {
@@ -3114,21 +3097,6 @@ CV_EXPORTS bool useSVM(UMatUsageFlags usageFlags)
 } // namespace cv::ocl::svm
 #endif // HAVE_OPENCL_SVM
 
-Context::UserContext::~UserContext()
-{
-}
-
-void Context::setUserContext(std::type_index typeId, const std::shared_ptr<Context::UserContext>& userContext)
-{
-    CV_Assert(p);
-    p->setUserContext(typeId, userContext);
-}
-
-std::shared_ptr<Context::UserContext> Context::getUserContext(std::type_index typeId)
-{
-    CV_Assert(p);
-    return p->getUserContext(typeId);
-}
 
 static void get_platform_name(cl_platform_id id, String& name)
 {
@@ -3486,6 +3454,7 @@ struct Kernel::Impl
     void registerImageArgument(int arg, const Image2D& image)
     {
         CV_CheckGE(arg, 0, "");
+        CV_CheckLT(arg, (int)MAX_ARRS, "");
         if (arg < (int)shadow_images.size() && shadow_images[arg].ptr() != image.ptr())  // TODO future: replace ptr => impl (more strong check)
         {
             CV_Check(arg, !isInProgress, "ocl::Kernel: clearing of pending Image2D arguments is not allowed");
@@ -5522,19 +5491,13 @@ public:
                     && !(u->originalUMatData && u->originalUMatData->handle)
                 )
                 {
-                    // Change the host-side origdata[size] to "pinned memory" that enables fast
-                    // DMA-transfers over PCIe to the device. Often used with clEnqueueMapBuffer/clEnqueueUnmapMemObject
-                    handle = clCreateBuffer(ctx_handle, CL_MEM_USE_HOST_PTR|(createFlags & ~CL_MEM_ALLOC_HOST_PTR),
+                    handle = clCreateBuffer(ctx_handle, CL_MEM_USE_HOST_PTR|createFlags,
                                             u->size, u->origdata, &retval);
-                    CV_OCL_DBG_CHECK_RESULT(retval, cv::format("clCreateBuffer(CL_MEM_USE_HOST_PTR|(createFlags & ~CL_MEM_ALLOC_HOST_PTR), sz=%lld, origdata=%p) => %p",
+                    CV_OCL_DBG_CHECK_RESULT(retval, cv::format("clCreateBuffer(CL_MEM_USE_HOST_PTR|createFlags, sz=%lld, origdata=%p) => %p",
                             (long long int)u->size, u->origdata, (void*)handle).c_str());
                 }
                 if((!handle || retval < 0) && !(accessFlags & ACCESS_FAST))
                 {
-                    // Allocate device-side memory and immediately copy data from the host-side pointer origdata[size].
-                    // If createFlags=CL_MEM_ALLOC_HOST_PTR (aka cv::USAGE_ALLOCATE_HOST_MEMORY), then
-                    // additionally allocate a host-side "pinned" duplicate of the origdata that is
-                    // managed by OpenCL. This is potentially faster in unaligned/unmanaged scenarios.
                     handle = clCreateBuffer(ctx_handle, CL_MEM_COPY_HOST_PTR|CL_MEM_READ_WRITE|createFlags,
                                                u->size, u->origdata, &retval);
                     CV_OCL_DBG_CHECK_RESULT(retval, cv::format("clCreateBuffer(CL_MEM_COPY_HOST_PTR|CL_MEM_READ_WRITE|createFlags, sz=%lld, origdata=%p) => %p",
@@ -7541,5 +7504,16 @@ uint64 Timer::durationNS() const
 }
 
 }} // namespace
+
+#ifdef HAVE_DIRECTX
+namespace cv { namespace directx { namespace internal {
+OpenCLDirectXImpl* getDirectXImpl(ocl::Context& ctx)
+{
+    ocl::Context::Impl* i = ctx.getImpl();
+    CV_Assert(i);
+    return i->getDirectXImpl();
+}
+}}} // namespace cv::directx::internal
+#endif
 
 #endif // HAVE_OPENCL

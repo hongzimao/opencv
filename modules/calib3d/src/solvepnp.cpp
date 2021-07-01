@@ -402,14 +402,7 @@ bool solvePnPRansac( InputArray objectPoints, InputArray imagePoints,
     Ptr<usac::RansacOutput> ransac_output;
     if (usac::run(model_params, imagePoints, objectPoints, model_params->getRandomGeneratorState(),
             ransac_output, cameraMatrix, noArray(), distCoeffs, noArray())) {
-        if (inliers.needed()) {
-            const auto &inliers_mask = ransac_output->getInliersMask();
-            Mat inliers_;
-            for (int i = 0; i < (int)inliers_mask.size(); i++)
-                if (inliers_mask[i])
-                    inliers_.push_back(i);
-            inliers_.copyTo(inliers);
-        }
+        usac::saveMask(inliers, ransac_output->getInliersMask());
         const Mat &model = ransac_output->getModel();
         model.col(0).copyTo(rvec);
         model.col(1).copyTo(tvec);

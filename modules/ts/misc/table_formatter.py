@@ -1,11 +1,7 @@
 #!/usr/bin/env python
 
 from __future__ import print_function
-import sys, re, os.path, stat, math
-try:
-    from html import escape
-except ImportError:
-    from cgi import escape  # Python 2.7
+import sys, re, os.path, cgi, stat, math
 from optparse import OptionParser
 from color import getColorizer, dummyColorizer
 
@@ -27,7 +23,7 @@ class tblRow(object):
         self.props = props
 
 def htmlEncode(str):
-    return '<br/>'.join([escape(s) for s in str])
+    return '<br/>'.join([cgi.escape(s) for s in str])
 
 class table(object):
     def_align = "left"

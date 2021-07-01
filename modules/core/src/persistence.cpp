@@ -143,17 +143,17 @@ static const char symbols[9] = "ucwsifdh";
 static char typeSymbol(int depth)
 {
     CV_StaticAssert(CV_64F == 6, "");
-    CV_CheckDepth(depth, depth >=0 && depth <= CV_16F, "");
+    CV_Assert(depth >=0 && depth <= CV_64F);
     return symbols[depth];
 }
 
 static int symbolToType(char c)
 {
-    if (c == 'r')
-        return CV_SEQ_ELTYPE_PTR;
     const char* pos = strchr( symbols, c );
     if( !pos )
         CV_Error( CV_StsBadArg, "Invalid data type specification" );
+    if (c == 'r')
+        return CV_SEQ_ELTYPE_PTR;
     return static_cast<int>(pos - symbols);
 }
 
@@ -245,12 +245,8 @@ int calcStructSize( const char* dt, int initial_size )
 {
     int size = calcElemSize( dt, initial_size );
     size_t elem_max_size = 0;
-    for ( const char * type = dt; *type != '\0'; type++ )
-    {
-        char v = *type;
-        if (v >= '0' && v <= '9')
-            continue;  // skip vector size
-        switch (v)
+    for ( const char * type = dt; *type != '\0'; type++ ) {
+        switch ( *type )
         {
         case 'u': { elem_max_size = std::max( elem_max_size, sizeof(uchar ) ); break; }
         case 'c': { elem_max_size = std::max( elem_max_size, sizeof(schar ) ); break; }
@@ -259,9 +255,7 @@ int calcStructSize( const char* dt, int initial_size )
         case 'i': { elem_max_size = std::max( elem_max_size, sizeof(int   ) ); break; }
         case 'f': { elem_max_size = std::max( elem_max_size, sizeof(float ) ); break; }
         case 'd': { elem_max_size = std::max( elem_max_size, sizeof(double) ); break; }
-        case 'h': { elem_max_size = std::max(elem_max_size, sizeof(float16_t)); break; }
-        default:
-            CV_Error_(Error::StsNotImplemented, ("Unknown type identifier: '%c' in '%s'", (char)(*type), dt));
+        default: break;
         }
     }
     size = cvAlign( size, static_cast<int>(elem_max_size) );
@@ -1060,7 +1054,6 @@ public:
         CV_Assert(write_mode);
 
         size_t elemSize = fs::calcStructSize(dt.c_str(), 0);
-        CV_Assert(elemSize);
         CV_Assert( len % elemSize == 0 );
         len /= elemSize;
 

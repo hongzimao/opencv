@@ -795,18 +795,18 @@ void cvSetPropTopmost_COCOA( const char* name, const bool topmost )
     __END__;
 }
 
-void setWindowTitle_COCOA(const cv::String& winname, const cv::String& title)
+void cv::setWindowTitle(const String& winname, const String& title)
 {
     CVWindow *window = cvGetWindow(winname.c_str());
 
     if (window == NULL)
     {
-        cv::namedWindow(winname);
+        namedWindow(winname);
         window = cvGetWindow(winname.c_str());
     }
 
     if (window == NULL)
-        CV_Error(cv::Error::StsNullPtr, "NULL window");
+        CV_Error(Error::StsNullPtr, "NULL window");
 
     NSAutoreleasePool* localpool = [[NSAutoreleasePool alloc] init];
 

@@ -4,7 +4,7 @@
 
 @CLAMDFFT_REMAP_ORIGIN@
 
-#include <clFFT.h>
+#include <clAmdFft.h>
 
 @CLAMDFFT_REMAP_DYNAMIC@
 

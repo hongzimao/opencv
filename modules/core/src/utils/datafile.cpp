@@ -16,7 +16,6 @@
 #include "opencv2/core/utils/filesystem.hpp"
 
 #include <opencv2/core/utils/configuration.private.hpp>
-#include "opencv2/core/utils/filesystem.private.hpp"
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
@@ -68,7 +67,6 @@ CV_EXPORTS void addDataSearchSubDirectory(const cv::String& subdir)
     _getDataSearchSubDirectory().push_back(subdir);
 }
 
-#if OPENCV_HAVE_FILESYSTEM_SUPPORT
 static bool isPathSep(char c)
 {
     return c == '/' || c == '\\';
@@ -98,14 +96,12 @@ static bool isSubDirectory_(const cv::String& base_path, const cv::String& path)
     }
     return true;
 }
-
 static bool isSubDirectory(const cv::String& base_path, const cv::String& path)
 {
     bool res = isSubDirectory_(base_path, path);
     CV_LOG_VERBOSE(NULL, 0, "isSubDirectory(): base: " << base_path << "  path: " << path << "  => result: " << (res ? "TRUE" : "FALSE"));
     return res;
 }
-#endif //OPENCV_HAVE_FILESYSTEM_SUPPORT
 
 static cv::String getModuleLocation(const void* addr)
 {
@@ -192,7 +188,6 @@ cv::String findDataFile(const cv::String& relative_path,
                         const std::vector<String>* search_paths,
                         const std::vector<String>* subdir_paths)
 {
-#if OPENCV_HAVE_FILESYSTEM_SUPPORT
     configuration_parameter = configuration_parameter ? configuration_parameter : "OPENCV_DATA_PATH";
     CV_LOG_DEBUG(NULL, cv::format("utils::findDataFile('%s', %s)", relative_path.c_str(), configuration_parameter));
 
@@ -415,18 +410,10 @@ cv::String findDataFile(const cv::String& relative_path,
 #endif
 
     return cv::String();  // not found
-#else // OPENCV_HAVE_FILESYSTEM_SUPPORT
-    CV_UNUSED(relative_path);
-    CV_UNUSED(configuration_parameter);
-    CV_UNUSED(search_paths);
-    CV_UNUSED(subdir_paths);
-    CV_Error(Error::StsNotImplemented, "File system support is disabled in this OpenCV build!");
-#endif // OPENCV_HAVE_FILESYSTEM_SUPPORT
 }
 
 cv::String findDataFile(const cv::String& relative_path, bool required, const char* configuration_parameter)
 {
-#if OPENCV_HAVE_FILESYSTEM_SUPPORT
     CV_LOG_DEBUG(NULL, cv::format("cv::utils::findDataFile('%s', %s, %s)",
                                   relative_path.c_str(), required ? "true" : "false",
                                   configuration_parameter ? configuration_parameter : "NULL"));
@@ -437,12 +424,6 @@ cv::String findDataFile(const cv::String& relative_path, bool required, const ch
     if (result.empty() && required)
         CV_Error(cv::Error::StsError, cv::format("OpenCV: Can't find required data file: %s", relative_path.c_str()));
     return result;
-#else // OPENCV_HAVE_FILESYSTEM_SUPPORT
-    CV_UNUSED(relative_path);
-    CV_UNUSED(required);
-    CV_UNUSED(configuration_parameter);
-    CV_Error(Error::StsNotImplemented, "File system support is disabled in this OpenCV build!");
-#endif // OPENCV_HAVE_FILESYSTEM_SUPPORT
 }
 
 }} // namespace

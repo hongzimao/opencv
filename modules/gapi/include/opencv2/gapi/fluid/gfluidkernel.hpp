@@ -25,9 +25,6 @@ namespace cv {
 
 namespace gapi
 {
-/**
- * @brief This namespace contains G-API Fluid backend functions, structures, and symbols.
- */
 namespace fluid
 {
     /**

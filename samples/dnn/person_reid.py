@@ -21,7 +21,6 @@ import cv2 as cv
 backends = (cv.dnn.DNN_BACKEND_DEFAULT,
     cv.dnn.DNN_BACKEND_INFERENCE_ENGINE,
     cv.dnn.DNN_BACKEND_OPENCV,
-    cv.dnn.DNN_BACKEND_VKCOM,
     cv.dnn.DNN_BACKEND_CUDA)
 
 targets = (cv.dnn.DNN_TARGET_CPU,
@@ -29,7 +28,6 @@ targets = (cv.dnn.DNN_TARGET_CPU,
     cv.dnn.DNN_TARGET_OPENCL_FP16,
     cv.dnn.DNN_TARGET_MYRIAD,
     cv.dnn.DNN_TARGET_HDDL,
-    cv.dnn.DNN_TARGET_VULKAN,
     cv.dnn.DNN_TARGET_CUDA,
     cv.dnn.DNN_TARGET_CUDA_FP16)
 
@@ -214,8 +212,7 @@ if __name__ == '__main__':
                         help="Choose one of computation backends: "
                              "%d: automatically (by default), "
                              "%d: Intel's Deep Learning Inference Engine (https://software.intel.com/openvino-toolkit), "
-                             "%d: OpenCV implementation, "
-                             "%d: VKCOM, "
+                             "%d: OpenCV implementation"
                              "%d: CUDA backend"% backends)
     parser.add_argument('--target', choices=targets, default=cv.dnn.DNN_TARGET_CPU, type=int,
                         help='Choose one of target computation devices: '
@@ -223,10 +220,9 @@ if __name__ == '__main__':
                              '%d: OpenCL, '
                              '%d: OpenCL fp16 (half-float precision), '
                              '%d: NCS2 VPU, '
-                             '%d: HDDL VPU, '
-                             '%d: Vulkan, '
-                             '%d: CUDA, '
-                             '%d: CUDA FP16'
+                             '%d: HDDL VPU'
+                             '%d: CUDA,'
+                             '%d: CUDA FP16,'
                              % targets)
     args, _ = parser.parse_known_args()
 

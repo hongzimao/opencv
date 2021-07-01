@@ -67,24 +67,13 @@ std::ostream& operator<< (std::ostream &os, const KernelPackage &e)
     return os;
 }
 
-struct GAPI_Streaming: public ::testing::TestWithParam<std::tuple<KernelPackage,
-                                                                  cv::optional<size_t>>> {
-    GAPI_Streaming() {
-        initTestDataPath();
-        KernelPackage pkg_kind;
-        std::tie(pkg_kind, cap) = GetParam();
-        pkg = getKernelPackage(pkg_kind);
-    }
+struct GAPI_Streaming: public ::testing::TestWithParam<KernelPackage> {
+    GAPI_Streaming() { initTestDataPath(); }
 
-    const cv::optional<size_t>& getQueueCapacity()
-    {
-        return cap;
-    }
-
-    cv::gapi::GKernelPackage getKernelPackage(KernelPackage pkg_kind)
+    cv::gapi::GKernelPackage getKernelPackage()
     {
         using namespace cv::gapi;
-        switch (pkg_kind)
+        switch (GetParam())
         {
         case KernelPackage::OCV:
             return cv::gapi::combine(core::cpu::kernels(),
@@ -115,18 +104,6 @@ struct GAPI_Streaming: public ::testing::TestWithParam<std::tuple<KernelPackage,
         }
         throw std::logic_error("Unknown package");
     }
-
-    cv::GCompileArgs getCompileArgs() {
-        using namespace cv::gapi;
-        auto args = cv::compile_args(use_only{pkg});
-        if (cap) {
-            args += cv::compile_args(streaming::queue_capacity{cap.value()});
-        }
-        return args;
-    }
-
-    cv::gapi::GKernelPackage pkg;
-    cv::optional<size_t>     cap;
 };
 
 G_API_OP(Delay, <cv::GMat(cv::GMat, int)>, "org.opencv.test.delay") {
@@ -283,7 +260,8 @@ TEST_P(GAPI_Streaming, SmokeTest_ConstInput_GMat)
     }
 
     // Compilation & testing
-    auto ccomp = c.compileStreaming(cv::descr_of(in_mat), getCompileArgs());
+    auto ccomp = c.compileStreaming(cv::descr_of(in_mat),
+                                    cv::compile_args(cv::gapi::use_only{getKernelPackage()}));
     EXPECT_TRUE(ccomp);
     EXPECT_FALSE(ccomp.running());
 
@@ -328,7 +306,7 @@ TEST_P(GAPI_Streaming, SmokeTest_VideoInput_GMat)
 
     // Compilation & testing
     auto ccomp = c.compileStreaming(cv::GMatDesc{CV_8U,3,cv::Size{768,576}},
-                                    getCompileArgs());
+                                    cv::compile_args(cv::gapi::use_only{getKernelPackage()}));
     EXPECT_TRUE(ccomp);
     EXPECT_FALSE(ccomp.running());
 
@@ -378,7 +356,7 @@ TEST_P(GAPI_Streaming, Regression_CompileTimeScalar)
     cv::GComputation c(cv::GIn(in), cv::GOut(tmp, tmp + 1));
 
     auto ccomp = c.compileStreaming(cv::GMatDesc{CV_8U,3,cv::Size{768,512}},
-                                    getCompileArgs());
+                                    cv::compile_args(cv::gapi::use_only{getKernelPackage()}));
 
     cv::Mat in_mat = cv::imread(findDataFile("cv/edgefilter/kodim23.png"));
     cv::Mat out_mat1, out_mat2;
@@ -401,7 +379,7 @@ TEST_P(GAPI_Streaming, SmokeTest_StartRestart)
     cv::GComputation c(cv::GIn(in), cv::GOut(cv::gapi::copy(in), out));
 
     auto ccomp = c.compileStreaming(cv::GMatDesc{CV_8U,3,cv::Size{768,576}},
-                                    getCompileArgs());
+                                    cv::compile_args(cv::gapi::use_only{getKernelPackage()}));
     EXPECT_TRUE(ccomp);
     EXPECT_FALSE(ccomp.running());
 
@@ -446,7 +424,8 @@ TEST_P(GAPI_Streaming, SmokeTest_VideoConstSource_NoHang)
     auto refc = cv::GComputation([](){
         cv::GMat in;
         return cv::GComputation(in, cv::gapi::copy(in));
-    }).compileStreaming(cv::GMatDesc{CV_8U,3,cv::Size{768,576}}, getCompileArgs());
+    }).compileStreaming(cv::GMatDesc{CV_8U,3,cv::Size{768,576}},
+                        cv::compile_args(cv::gapi::use_only{getKernelPackage()}));
 
     auto path = findDataFile("cv/video/768x576.avi");
     try {
@@ -468,7 +447,7 @@ TEST_P(GAPI_Streaming, SmokeTest_VideoConstSource_NoHang)
     auto testc = cv::GComputation(cv::GIn(in, in2), cv::GOut(out))
         .compileStreaming(cv::GMatDesc{CV_8U,3,cv::Size{256,256}},
                           cv::GMatDesc{CV_8U,3,cv::Size{768,576}},
-                          getCompileArgs());
+                          cv::compile_args(cv::gapi::use_only{getKernelPackage()}));
 
     cv::Mat in_const = cv::Mat::eye(cv::Size(256,256), CV_8UC3);
     testc.setSource(cv::gin(in_const,
@@ -489,7 +468,7 @@ TEST_P(GAPI_Streaming, SmokeTest_AutoMeta)
     cv::GMat out = blr - in;
 
     auto testc = cv::GComputation(cv::GIn(in, in2), cv::GOut(out))
-        .compileStreaming(getCompileArgs());
+        .compileStreaming(cv::compile_args(cv::gapi::use_only{getKernelPackage()}));
 
     cv::Mat in_const = cv::Mat::eye(cv::Size(256,256), CV_8UC3);
     cv::Mat tmp;
@@ -531,7 +510,7 @@ TEST_P(GAPI_Streaming, SmokeTest_AutoMeta_2xConstMat)
     cv::GMat out = blr - in;
 
     auto testc = cv::GComputation(cv::GIn(in, in2), cv::GOut(out))
-        .compileStreaming(getCompileArgs());
+        .compileStreaming(cv::compile_args(cv::gapi::use_only{getKernelPackage()}));
 
     cv::Mat in_const = cv::Mat::eye(cv::Size(256,256), CV_8UC3);
     cv::Mat tmp;
@@ -562,7 +541,7 @@ TEST_P(GAPI_Streaming, SmokeTest_AutoMeta_VideoScalar)
     cv::GMat out_m = in_m * in_s;
 
     auto testc = cv::GComputation(cv::GIn(in_m, in_s), cv::GOut(out_m))
-        .compileStreaming(getCompileArgs());
+        .compileStreaming(cv::compile_args(cv::gapi::use_only{getKernelPackage()}));
 
     cv::Mat tmp;
     // Test with one video source and scalar
@@ -593,13 +572,11 @@ TEST_P(GAPI_Streaming, SmokeTest_AutoMeta_VideoScalar)
 }
 
 INSTANTIATE_TEST_CASE_P(TestStreaming, GAPI_Streaming,
-                        Combine(Values(  KernelPackage::OCV
-                                    //, KernelPackage::OCL // FIXME: Fails bit-exactness check, maybe relax it?
-                                      , KernelPackage::OCV_FLUID
-                                    //, KernelPackage::OCL // FIXME: Fails bit-exactness check, maybe relax it?
-                                ),
-                                Values(cv::optional<size_t>{}, 1u, 4u))
-                        );
+                        Values(  KernelPackage::OCV
+                             //, KernelPackage::OCL // FIXME: Fails bit-exactness check, maybe relax it?
+                               , KernelPackage::OCV_FLUID
+                             //, KernelPackage::OCL // FIXME: Fails bit-exactness check, maybe relax it?
+                               ));
 
 namespace TypesTest
 {
@@ -676,15 +653,8 @@ TEST_P(GAPI_Streaming, SmokeTest_AutoMeta_VideoArray)
     cv::GMat out_m = TypesTest::AddV::on(in_m, in_v) - in_m;
 
     // Run pipeline
-    auto args = cv::compile_args(cv::gapi::kernels<TypesTest::OCVAddV>());
-    auto capacity = getQueueCapacity();
-    if (capacity)
-    {
-        args += cv::compile_args(
-                    cv::gapi::streaming::queue_capacity{capacity.value()});
-    }
     auto testc = cv::GComputation(cv::GIn(in_m, in_v), cv::GOut(out_m))
-                    .compileStreaming(std::move(args));
+                    .compileStreaming(cv::compile_args(cv::gapi::kernels<TypesTest::OCVAddV>()));
 
     cv::Mat tmp;
     // Test with one video source and vector
@@ -1138,20 +1108,22 @@ TEST(GAPI_Streaming, TestTwoVideosDifferentLength)
 {
     initTestDataPath();
     auto desc = cv::GMatDesc{CV_8U,3,{768,576}};
-    auto path1 = findDataFile("cv/video/768x576.avi");
-    auto path2 = findDataFile("highgui/video/big_buck_bunny.avi");
+    std::string path1, path2;
+    try {
+        path1 = findDataFile("cv/video/768x576.avi");
+        path2 = findDataFile("highgui/video/big_buck_bunny.avi");
+    } catch(...) {
+        throw SkipTestException("Video file can not be found");
+    }
 
     cv::GMat in1, in2;
     auto out = in1 + cv::gapi::resize(in2, desc.size);
 
     cv::GComputation cc(cv::GIn(in1, in2), cv::GOut(out));
     auto sc = cc.compileStreaming();
-    try {
-        sc.setSource(cv::gin(gapi::wip::make_src<cv::gapi::wip::GCaptureSource>(path1),
-                             gapi::wip::make_src<cv::gapi::wip::GCaptureSource>(path2)));
-    } catch(...) {
-        throw SkipTestException("Video file can not be found");
-    }
+
+    sc.setSource(cv::gin(gapi::wip::make_src<cv::gapi::wip::GCaptureSource>(path1),
+                         gapi::wip::make_src<cv::gapi::wip::GCaptureSource>(path2)));
     sc.start();
 
     cv::Mat out_mat;

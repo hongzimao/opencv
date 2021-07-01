@@ -634,15 +634,6 @@ GAPI_OCV_KERNEL(GCPUKMeans3D, cv::gapi::core::GKMeans3D)
     }
 };
 
-GAPI_OCV_KERNEL(GCPUTranspose, cv::gapi::core::GTranspose)
-{
-    static void run(const cv::Mat& in, cv::Mat& out)
-    {
-        cv::transpose(in, out);
-    }
-};
-
-
 GAPI_OCV_KERNEL(GCPUParseSSDBL, cv::gapi::nn::parsers::GParseSSDBL)
 {
     static void run(const cv::Mat&  in_ssd_result,
@@ -652,12 +643,7 @@ GAPI_OCV_KERNEL(GCPUParseSSDBL, cv::gapi::nn::parsers::GParseSSDBL)
                     std::vector<cv::Rect>& out_boxes,
                     std::vector<int>&      out_labels)
     {
-        cv::ParseSSD(in_ssd_result, in_size,
-                     confidence_threshold,
-                     filter_label,
-                     false,
-                     false,
-                     out_boxes, out_labels);
+        cv::parseSSDBL(in_ssd_result, in_size, confidence_threshold, filter_label, out_boxes, out_labels);
     }
 };
 
@@ -670,13 +656,7 @@ GAPI_OCV_KERNEL(GOCVParseSSD, cv::gapi::nn::parsers::GParseSSD)
                     const bool      filter_out_of_bounds,
                     std::vector<cv::Rect>& out_boxes)
     {
-        std::vector<int> unused_labels;
-        cv::ParseSSD(in_ssd_result, in_size,
-                     confidence_threshold,
-                     -1,
-                     alignment_to_square,
-                     filter_out_of_bounds,
-                     out_boxes, unused_labels);
+        cv::parseSSD(in_ssd_result, in_size, confidence_threshold, alignment_to_square, filter_out_of_bounds, out_boxes);
     }
 };
 
@@ -794,7 +774,6 @@ cv::gapi::GKernelPackage cv::gapi::core::cpu::kernels()
          , GCPUKMeansNDNoInit
          , GCPUKMeans2D
          , GCPUKMeans3D
-         , GCPUTranspose
          , GCPUParseSSDBL
          , GOCVParseSSD
          , GCPUParseYolo

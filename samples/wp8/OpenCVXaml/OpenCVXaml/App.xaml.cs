@@ -207,7 +207,7 @@ namespace OpenCVXaml
             catch
             {
                 // If an exception is caught here it is most likely due to either
-                // ResourceLanguage not being correctly set to a supported language
+                // ResourceLangauge not being correctly set to a supported language
                 // code or ResourceFlowDirection is set to a value other than LeftToRight
                 // or RightToLeft.
 

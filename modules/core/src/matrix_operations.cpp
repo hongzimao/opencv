@@ -229,14 +229,14 @@ void cv::setIdentity( InputOutputArray _m, const Scalar& s )
 
 namespace cv {
 
-UMat UMat::eye(int rows, int cols, int type, UMatUsageFlags usageFlags)
+UMat UMat::eye(int rows, int cols, int type)
 {
-    return UMat::eye(Size(cols, rows), type, usageFlags);
+    return UMat::eye(Size(cols, rows), type);
 }
 
-UMat UMat::eye(Size size, int type, UMatUsageFlags usageFlags)
+UMat UMat::eye(Size size, int type)
 {
-    UMat m(size, type, usageFlags);
+    UMat m(size, type);
     setIdentity(m);
     return m;
 }

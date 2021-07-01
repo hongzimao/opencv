@@ -41,7 +41,8 @@ elif args.dataset == 'MPI':
                    ["RElbow", "RWrist"], ["Neck", "LShoulder"], ["LShoulder", "LElbow"],
                    ["LElbow", "LWrist"], ["Neck", "Chest"], ["Chest", "RHip"], ["RHip", "RKnee"],
                    ["RKnee", "RAnkle"], ["Chest", "LHip"], ["LHip", "LKnee"], ["LKnee", "LAnkle"] ]
-elif args.dataset == 'HAND':
+else:
+    assert(args.dataset == 'HAND')
     BODY_PARTS = { "Wrist": 0,
                    "ThumbMetacarpal": 1, "ThumbProximal": 2, "ThumbMiddle": 3, "ThumbDistal": 4,
                    "IndexFingerMetacarpal": 5, "IndexFingerProximal": 6, "IndexFingerMiddle": 7, "IndexFingerDistal": 8,
@@ -60,8 +61,7 @@ elif args.dataset == 'HAND':
                    ["RingFingerProximal", "RingFingerMiddle"], ["RingFingerMiddle", "RingFingerDistal"],
                    ["Wrist", "LittleFingerMetacarpal"], ["LittleFingerMetacarpal", "LittleFingerProximal"],
                    ["LittleFingerProximal", "LittleFingerMiddle"], ["LittleFingerMiddle", "LittleFingerDistal"] ]
-else:
-    raise(Exception("you need to specify either 'COCO', 'MPI', or 'Hand' in args.dataset"))
+
 
 inWidth = args.width
 inHeight = args.height

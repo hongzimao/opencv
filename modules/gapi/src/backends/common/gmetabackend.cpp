@@ -71,7 +71,7 @@ void GraphMetaExecutable::run(std::vector<InObj>  &&input_objs,
     cv::util::get<cv::detail::OpaqueRef>(out_arg) = it->second;
 }
 
-class GGraphMetaBackendImpl final: public cv::gapi::GBackend::Priv {
+class GraphMetaBackendImpl final: public cv::gapi::GBackend::Priv {
     virtual void unpackKernel(ade::Graph            &,
                               const ade::NodeHandle &,
                               const cv::GKernelImpl &) override {
@@ -85,23 +85,10 @@ class GGraphMetaBackendImpl final: public cv::gapi::GBackend::Priv {
                          const std::vector<cv::gimpl::Data>&) const override {
         return EPtr{new GraphMetaExecutable(graph, nodes)};
     }
-
-    virtual bool controlsMerge() const override
-    {
-        return true;
-    }
-
-    virtual bool allowsMerge(const cv::gimpl::GIslandModel::Graph &,
-                             const ade::NodeHandle &,
-                             const ade::NodeHandle &,
-                             const ade::NodeHandle &) const override
-    {
-        return false;
-    }
 };
 
 cv::gapi::GBackend graph_meta_backend() {
-    static cv::gapi::GBackend this_backend(std::make_shared<GGraphMetaBackendImpl>());
+    static cv::gapi::GBackend this_backend(std::make_shared<GraphMetaBackendImpl>());
     return this_backend;
 }
 

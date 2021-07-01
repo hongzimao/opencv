@@ -42,9 +42,6 @@ namespace cv {
 //         performCalculations(in_view, out_view);
 //         // data from out_view is transferred to the device when out_view is destroyed
 //     }
-/** \addtogroup gapi_data_structures
- * @{
- */
 class GAPI_EXPORTS RMat
 {
 public:
@@ -149,7 +146,6 @@ private:
 
 template<typename T, typename... Ts>
 RMat make_rmat(Ts&&... args) { return { std::make_shared<T>(std::forward<Ts>(args)...) }; }
-/** @} */
 
 } //namespace cv
 

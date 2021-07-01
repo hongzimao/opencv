@@ -40,10 +40,6 @@ namespace gimpl
 
 namespace gapi
 {
-/**
- * @brief This namespace contains G-API CPU backend functions,
- * structures, and symbols.
- */
 namespace cpu
 {
     /**
@@ -496,7 +492,7 @@ public:
 #define GAPI_OCV_KERNEL_ST(Name, API, State)                   \
     struct Name: public cv::GCPUStKernelImpl<Name, API, State> \
 
-/// @private
+
 class gapi::cpu::GOCVFunctor : public gapi::GFunctor
 {
 public:
