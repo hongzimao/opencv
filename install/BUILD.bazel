@@ -1,4 +1,4 @@
-# TODO: dylib and so condition on osx vs linux
+# TODO: dylib and so condition on osx
 cc_library(
     name = "opencv",
     srcs = glob(
