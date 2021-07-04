@@ -1,8 +1,7 @@
-# TODO: dylib and so condition on osx
 cc_library(
     name = "opencv",
     srcs = glob(
-      ["lib/*.dylib*"]),
+      ["lib/*.so*"]),
     hdrs = glob([
       "include/**/*.hpp",
       "include/**/*.h",
